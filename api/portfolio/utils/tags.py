@@ -8,9 +8,13 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from database import PortfolioTagDefinition, SelfSelectedStock
+from services.portfolio.constants import DEFAULT_TAG_DEFINITIONS
+from services.portfolio.notes import (
+    get_stock_tags,
+    normalize_tags,
+    parse_stock_notes,
+)
 from services.stock_metadata import get_stock_name
-
-from ..constants import DEFAULT_TAG_DEFINITIONS
 
 
 def normalize_tag_name(tag: str | None) -> str:
@@ -26,24 +30,6 @@ def normalize_tag_color(color: str | None) -> str:
     if not re.fullmatch(r"#[0-9a-fA-F]{6}", cleaned_color):
         raise HTTPException(status_code=400, detail="Invalid tag color")
     return cleaned_color.lower()
-
-
-def normalize_tags(tags: list[str] | None) -> list[str]:
-    """清洗标签值，去重并保留用户输入顺序。"""
-    if not tags:
-        return []
-
-    normalized_tags: list[str] = []
-    seen_tags: set[str] = set()
-
-    for tag in tags:
-        cleaned_tag = normalize_tag_name(tag)
-        if not cleaned_tag or cleaned_tag in seen_tags:
-            continue
-        seen_tags.add(cleaned_tag)
-        normalized_tags.append(cleaned_tag)
-
-    return normalized_tags
 
 
 def ensure_default_tag_definitions(db: Session) -> None:
@@ -79,35 +65,6 @@ def serialize_tag_definition(
         "usage_count": usage_count,
         "created_at": definition.created_at,
     }
-
-
-def parse_stock_notes(notes: str | None) -> dict:
-    """兼容旧 notes 文本和新 JSON 结构。"""
-    if not notes:
-        return {}
-
-    try:
-        parsed = json.loads(notes)
-    except json.JSONDecodeError:
-        return {"text": notes.strip()}
-
-    if isinstance(parsed, dict):
-        return parsed
-
-    if isinstance(parsed, list):
-        return {"tags": [item for item in parsed if isinstance(item, str)]}
-
-    return {}
-
-
-def get_stock_tags(notes: str | None) -> list[str]:
-    """从股票 notes JSON 中提取结构化标签列表。"""
-    parsed_notes = parse_stock_notes(notes)
-    raw_tags = parsed_notes.get("tags")
-    if not isinstance(raw_tags, list):
-        return []
-
-    return normalize_tags([tag for tag in raw_tags if isinstance(tag, str)])
 
 
 def serialize_stock_notes(notes: str | None, tags: list[str]) -> str | None:

@@ -4,68 +4,57 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 from database import SelfSelectedStock, StockGroup, StockGroupMembership
-
-from ..constants import (
+from services.portfolio.constants import (
     ASSET_TYPE_ETF,
-    ASSET_TYPE_STOCK,
     DEFAULT_GROUP_NAME,
     DEFAULT_GROUP_PARAMS,
     INDUSTRY_GROUP_PARAMS,
     MAX_INDUSTRY_GROUP_ETF_COUNT,
-    MEMBERSHIP_SCOPE_SELF_SELECTED,
     PORTFOLIO_GROUP_PARAMS,
-    VALID_ASSET_TYPES,
-    VALID_GROUP_PARAMS,
-    VALID_MEMBERSHIP_SCOPES,
+)
+from services.portfolio.exceptions import PortfolioValidationError
+from services.portfolio.groups import (
+    get_stock_group_names as _get_stock_group_names,
+    get_stock_group_names_by_codes as _get_stock_group_names_by_codes,
+    sort_group_names,
+)
+from services.portfolio.normalizers import (
+    normalize_asset_type as _normalize_asset_type,
+    normalize_group_params as _normalize_group_params,
+    normalize_membership_scope as _normalize_membership_scope,
 )
 
 
 def normalize_group_params(params: int | None) -> int:
     """校验并归一化分组类型，1 表示自选分组，2 表示行业分组。"""
     try:
-        normalized_params = DEFAULT_GROUP_PARAMS if params is None else int(params)
-    except (TypeError, ValueError) as exc:
-        raise HTTPException(status_code=400, detail="Invalid group params") from exc
-
-    if normalized_params not in VALID_GROUP_PARAMS:
-        raise HTTPException(status_code=400, detail="Invalid group params")
-    return normalized_params
+        return _normalize_group_params(params)
+    except PortfolioValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def normalize_membership_scope(scope: str | None) -> str:
     """校验股票入池范围，决定写入自选、组合分组还是行业分组。"""
-    normalized_scope = str(scope or MEMBERSHIP_SCOPE_SELF_SELECTED).strip()
-    if normalized_scope not in VALID_MEMBERSHIP_SCOPES:
-        raise HTTPException(status_code=400, detail="Invalid membership scope")
-    return normalized_scope
+    try:
+        return _normalize_membership_scope(scope)
+    except PortfolioValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def normalize_asset_type(asset_type: str | None = None) -> str:
     """校验列表筛选的资产类型参数。"""
-    normalized_asset_type = str(asset_type or ASSET_TYPE_STOCK).strip().lower()
-    if normalized_asset_type not in VALID_ASSET_TYPES:
-        raise HTTPException(status_code=400, detail="Invalid asset type")
-    return normalized_asset_type
-
-
-def sort_group_names(group_names: list[str]) -> list[str]:
-    """统一分组名展示顺序，默认分组始终排在最前。"""
-    return sorted(group_names, key=lambda name: (name != DEFAULT_GROUP_NAME, name))
+    try:
+        return _normalize_asset_type(asset_type)
+    except PortfolioValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def get_stock_group_names(db: Session, stock_code: str, params: int) -> list[str]:
     """查询单只股票在指定分组类型下所属的全部分组名。"""
-    normalized_params = normalize_group_params(params)
-    group_names = [
-        row[0]
-        for row in db.query(StockGroupMembership.group_name)
-        .filter(
-            StockGroupMembership.stock_code == stock_code,
-            StockGroupMembership.params == normalized_params,
-        )
-        .all()
-    ]
-    return sort_group_names(group_names)
+    try:
+        return _get_stock_group_names(db, stock_code, params)
+    except PortfolioValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def get_stock_group_names_by_codes(
@@ -74,27 +63,10 @@ def get_stock_group_names_by_codes(
     params: int,
 ) -> dict[str, list[str]]:
     """批量读取股票分组名，避免列表接口对每只股票重复查询 membership。"""
-    normalized_params = normalize_group_params(params)
-    if not stock_codes:
-        return {}
-
-    group_names_by_code: dict[str, list[str]] = {stock_code: [] for stock_code in stock_codes}
-    rows = (
-        db.query(StockGroupMembership.stock_code, StockGroupMembership.group_name)
-        .filter(
-            StockGroupMembership.stock_code.in_(stock_codes),
-            StockGroupMembership.params == normalized_params,
-        )
-        .all()
-    )
-
-    for stock_code, group_name in rows:
-        group_names_by_code.setdefault(stock_code, []).append(group_name)
-
-    return {
-        stock_code: sort_group_names(group_names)
-        for stock_code, group_names in group_names_by_code.items()
-    }
+    try:
+        return _get_stock_group_names_by_codes(db, stock_codes, params)
+    except PortfolioValidationError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=exc.detail) from exc
 
 
 def upsert_group_membership(db: Session, stock_code: str, group_name: str, params: int) -> bool:

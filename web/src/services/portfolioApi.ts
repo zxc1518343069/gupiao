@@ -24,6 +24,8 @@ type TagDefinitionPayload = {
   color: string
 }
 
+const portfolioStocksRequests = new Map<string, Promise<PortfolioStockItem[]>>()
+
 export const fetchPortfolioGroups = async (params: GroupParams = portfolioGroupParams) => {
   const data = await requestJson<ApiDataResponse<string[]>>(
     `/api/portfolio/groups?params=${params}`,
@@ -44,11 +46,21 @@ export const fetchPortfolioStocks = async (
   if (groupName) {
     searchParams.set('group_name', groupName)
   }
-  const data = await requestJson<ApiDataResponse<PortfolioStockItem[]>>(
-    `/api/portfolio/list?${searchParams.toString()}`,
-    '获取自选列表失败',
-  )
-  return data.data
+
+  const url = `/api/portfolio/list?${searchParams.toString()}`
+  const pendingRequest = portfolioStocksRequests.get(url)
+  if (pendingRequest) {
+    return pendingRequest
+  }
+
+  // React StrictMode 会在开发环境重复触发首屏 effect；同 URL 请求复用同一个 Promise。
+  const request = requestJson<ApiDataResponse<PortfolioStockItem[]>>(url, '获取自选列表失败')
+    .then((data) => data.data)
+    .finally(() => {
+      portfolioStocksRequests.delete(url)
+    })
+  portfolioStocksRequests.set(url, request)
+  return request
 }
 
 export const fetchPortfolioTagDefinitions = async () => {

@@ -2,6 +2,7 @@ import os
 import struct
 from dataclasses import dataclass
 from datetime import date, datetime
+from threading import Lock
 import pandas as pd
 from config import TDX_VIPDOC_PATH
 from services.stock_metadata import get_price_precision, get_price_scale_divisor
@@ -24,6 +25,18 @@ class StockAnalysisBundle:
 # 进程级行情指标缓存：通达信数据按工作日更新，运行期间不做热更新检查。
 # 如果本地 .day 文件更新，重启后端即可清空并重建这份缓存。
 STOCK_ANALYSIS_CACHE: dict[str, StockAnalysisBundle] = {}
+_STOCK_ANALYSIS_CACHE_LOCK = Lock()
+_STOCK_ANALYSIS_LOAD_LOCKS: dict[str, Lock] = {}
+
+
+def _get_stock_analysis_load_lock(stock_code: str) -> Lock:
+    """为单只股票提供加载锁，避免并发请求冷启动时重复读取和计算同一份 .day 数据。"""
+    with _STOCK_ANALYSIS_CACHE_LOCK:
+        load_lock = _STOCK_ANALYSIS_LOAD_LOCKS.get(stock_code)
+        if load_lock is None:
+            load_lock = Lock()
+            _STOCK_ANALYSIS_LOAD_LOCKS[stock_code] = load_lock
+        return load_lock
 
 
 def _build_tdx_day_file_path(stock_code: str) -> str:
@@ -89,13 +102,22 @@ def _load_stock_analysis_bundle(stock_code: str) -> StockAnalysisBundle:
 
 
 def _get_cached_stock_analysis_bundle(stock_code: str) -> StockAnalysisBundle:
-    cached_bundle = STOCK_ANALYSIS_CACHE.get(stock_code)
-    if cached_bundle is not None:
-        return cached_bundle
+    with _STOCK_ANALYSIS_CACHE_LOCK:
+        cached_bundle = STOCK_ANALYSIS_CACHE.get(stock_code)
+        if cached_bundle is not None:
+            return cached_bundle
 
-    bundle = _load_stock_analysis_bundle(stock_code)
-    STOCK_ANALYSIS_CACHE[stock_code] = bundle
-    return bundle
+    # 多个 list 请求同时进来时，只有第一个线程真正计算；后面的线程等待后直接读缓存。
+    with _get_stock_analysis_load_lock(stock_code):
+        with _STOCK_ANALYSIS_CACHE_LOCK:
+            cached_bundle = STOCK_ANALYSIS_CACHE.get(stock_code)
+            if cached_bundle is not None:
+                return cached_bundle
+
+        bundle = _load_stock_analysis_bundle(stock_code)
+        with _STOCK_ANALYSIS_CACHE_LOCK:
+            STOCK_ANALYSIS_CACHE[stock_code] = bundle
+        return bundle
 
 
 def get_stock_analysis_bundles(stock_codes: list[str]) -> dict[str, StockAnalysisBundle]:
@@ -247,12 +269,6 @@ def get_close_on_or_before_date(
     return safe_round(row.get("close"), price_precision), row.get("date")
 
 
-def calculate_portfolio_return(added_price: float | None, latest_price: float | None) -> float | None:
-    if added_price is None or latest_price is None or added_price == 0:
-        return None
-    return round((latest_price - added_price) / added_price * 100, 2)
-
-
 def calculate_change_percent(previous_price: float | None, current_price: float | None) -> float | None:
     if previous_price is None or current_price is None or previous_price == 0:
         return None
@@ -320,37 +336,6 @@ def get_stock_analysis_snapshot(stock_code: str) -> dict:
 
     return dict(bundle.snapshot)
 
-
-def get_stock_portfolio_snapshot(stock_code: str, added_at) -> dict:
-    bundle = _get_cached_stock_analysis_bundle(stock_code)
-    return build_stock_portfolio_snapshot_from_bundle(stock_code, added_at, bundle)
-
-
-def build_stock_portfolio_snapshot_from_bundle(
-    stock_code: str,
-    added_at,
-    bundle: StockAnalysisBundle | None,
-) -> dict:
-    """基于已缓存的行情对象构造持仓快照，避免调用方再次读取 .day 文件。"""
-    if bundle is None:
-        return {"error": "行情数据文件不存在或无可用数据"}
-    if bundle.error is not None:
-        return {"error": bundle.error}
-
-    df = bundle.dataframe
-    price_precision = get_price_precision(stock_code)
-    snapshot = dict(bundle.snapshot)
-    added_price, added_price_date = get_close_on_or_before_date(df, added_at, price_precision)
-    latest_price = snapshot.get("close")
-
-    return {
-        **snapshot,
-        "added_price": added_price,
-        "added_price_date": added_price_date,
-        "latest_price": latest_price,
-        "latest_price_date": snapshot.get("date"),
-        "portfolio_return": calculate_portfolio_return(added_price, latest_price),
-    }
 
 def analyze_stock(stock_code: str) -> dict:
     """
