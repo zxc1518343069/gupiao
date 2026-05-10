@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Local runtime data
+data.db
+*.db
+data/
+csvData/
+results/
+charts/
+
+# Frontend
+web/node_modules/
+web/dist/
+web/dist-ssr/
+web/*.log
+web/*.local
+
+# Editor and OS files
+.idea/
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Local notes and environment
+.learnings/
+.env
+.env.*
+!.env.example

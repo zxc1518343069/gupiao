@@ -1,0 +1,37 @@
+"""组合持仓模块常量定义。"""
+
+# 默认分组，表示仅加入自选但未归入自定义组合分组。
+DEFAULT_GROUP_NAME = "全部自选"
+
+# 分组类别参数：1 为组合分组，2 为行业分组。
+PORTFOLIO_GROUP_PARAMS = 1
+INDUSTRY_GROUP_PARAMS = 2
+DEFAULT_GROUP_PARAMS = PORTFOLIO_GROUP_PARAMS
+VALID_GROUP_PARAMS = {PORTFOLIO_GROUP_PARAMS, INDUSTRY_GROUP_PARAMS}
+
+# 行业分组下允许挂载的 ETF 上限，避免行业视图失真。
+MAX_INDUSTRY_GROUP_ETF_COUNT = 3
+
+# 资产类型枚举。
+ASSET_TYPE_STOCK = "stock"
+ASSET_TYPE_ETF = "etf"
+ASSET_TYPE_ALL = "all"
+VALID_ASSET_TYPES = {ASSET_TYPE_STOCK, ASSET_TYPE_ETF, ASSET_TYPE_ALL}
+
+# 股票进入持仓时的归属范围。
+MEMBERSHIP_SCOPE_SELF_SELECTED = "self_selected"
+MEMBERSHIP_SCOPE_PORTFOLIO_GROUP = "portfolio_group"
+MEMBERSHIP_SCOPE_INDUSTRY_GROUP = "industry_group"
+VALID_MEMBERSHIP_SCOPES = {
+    MEMBERSHIP_SCOPE_SELF_SELECTED,
+    MEMBERSHIP_SCOPE_PORTFOLIO_GROUP,
+    MEMBERSHIP_SCOPE_INDUSTRY_GROUP,
+}
+
+# 首次使用标签功能时自动注入的默认标签。
+DEFAULT_TAG_DEFINITIONS = (
+    {"name": "材料", "color": "#13c2c2"},
+    {"name": "设备", "color": "#1677ff"},
+    {"name": "核心部件", "color": "#722ed1"},
+    {"name": "生产制造", "color": "#fa8c16"},
+)
