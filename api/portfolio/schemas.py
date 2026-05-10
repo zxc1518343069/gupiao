@@ -42,10 +42,6 @@ class GroupRenameRequest(BaseModel):
     params: int = DEFAULT_GROUP_PARAMS
 
 
-class PortfolioAnalyzeRequest(BaseModel):
-    group_name: str | None = None
-
-
 class StockTagsUpdateRequest(BaseModel):
     tags: list[str]
 

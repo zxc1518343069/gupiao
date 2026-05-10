@@ -3,13 +3,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import (
-    PortfolioAnalysisDetail,
-    PortfolioAnalysisRun,
-    SelfSelectedStock,
-    StockGroup,
-    StockGroupMembership,
-)
+from database import SelfSelectedStock, StockGroup, StockGroupMembership
 
 from ...dependencies import get_db
 from ..constants import (
@@ -118,17 +112,6 @@ def rename_group(request: GroupRenameRequest, db: Session = Depends(get_db)):
     for stock in db.query(SelfSelectedStock).filter(SelfSelectedStock.stock_code.in_(affected_stock_codes)).all():
         sync_stock_membership_fields(db, stock)
 
-    # 历史分析记录只关联组合分组，因此只在该类别下同步名称。
-    if normalized_params == PORTFOLIO_GROUP_PARAMS:
-        for run in db.query(PortfolioAnalysisRun).filter(PortfolioAnalysisRun.group_name == old_name).all():
-            run.group_name = new_name
-
-        details = (
-            db.query(PortfolioAnalysisDetail).filter(PortfolioAnalysisDetail.group_name == old_name).all()
-        )
-        for detail in details:
-            detail.group_name = new_name
-
     db.commit()
     return {"message": "Group renamed successfully"}
 
@@ -162,22 +145,6 @@ def remove_group(group_name: str, params: int = DEFAULT_GROUP_PARAMS, db: Sessio
 
     for stock in db.query(SelfSelectedStock).filter(SelfSelectedStock.stock_code.in_(affected_stock_codes)).all():
         cleanup_stock_if_orphaned(db, stock)
-
-    if normalized_params == PORTFOLIO_GROUP_PARAMS:
-        # 组合分组被删除后，其历史分析记录也一并清理，避免出现孤儿运行记录。
-        run_ids = [
-            run.id
-            for run in db.query(PortfolioAnalysisRun.id)
-            .filter(PortfolioAnalysisRun.group_name == group_name)
-            .all()
-        ]
-        if run_ids:
-            db.query(PortfolioAnalysisDetail).filter(PortfolioAnalysisDetail.run_id.in_(run_ids)).delete(
-                synchronize_session=False
-            )
-        db.query(PortfolioAnalysisRun).filter(PortfolioAnalysisRun.group_name == group_name).delete(
-            synchronize_session=False
-        )
 
     db.delete(group)
     db.commit()

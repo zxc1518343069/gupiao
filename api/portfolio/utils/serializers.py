@@ -2,7 +2,7 @@
 
 from sqlalchemy.orm import Session
 
-from database import PortfolioAnalysisDetail, PortfolioAnalysisRun, SelfSelectedStock
+from database import SelfSelectedStock
 from services.stock_metadata import get_stock_name, get_stock_profile, infer_asset_type
 
 from ..constants import (
@@ -71,34 +71,4 @@ def serialize_portfolio_stock(
         "vol_status": snapshot.get("vol_status"),
         "trend_str": snapshot.get("trend_str"),
         "analysis_error": snapshot.get("error"),
-    }
-
-
-def serialize_run(run: PortfolioAnalysisRun) -> dict:
-    return {
-        "run_id": run.id,
-        "group_name": run.group_name,
-        "analyzed_at": run.analyzed_at,
-        "total_count": run.total_count,
-        "matched_count": run.matched_count,
-        "unmatched_count": run.unmatched_count,
-        "error_count": run.error_count,
-    }
-
-
-def serialize_detail(detail: PortfolioAnalysisDetail) -> dict:
-    return {
-        "stock_code": detail.stock_code,
-        "stock_name": get_stock_name(detail.stock_code, detail.stock_name),
-        "group_name": detail.group_name,
-        "is_triggered": detail.is_triggered,
-        "status": detail.status,
-        "reason": detail.reason,
-        "date": detail.date,
-        "close": detail.close,
-        "vol_ratio": detail.vol_ratio,
-        "bias_str": detail.bias_str,
-        "slope_str": detail.slope_str,
-        "vol_status": detail.vol_status,
-        "trend_str": detail.trend_str,
     }

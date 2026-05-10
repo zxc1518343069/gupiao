@@ -1,8 +1,5 @@
 import type {
-  AnalysisCompletionSummary,
   PortfolioAssetType,
-  AnalysisRunDetail,
-  AnalysisRunSummary,
   GroupParams,
   PortfolioMembershipScope,
   PortfolioTagDefinition,
@@ -20,12 +17,6 @@ type AddPortfolioStockPayload = {
 type AddPortfolioStockResponse = {
   added_count?: number
   skipped_count?: number
-}
-
-type AnalyzePortfolioResponse = {
-  data: AnalysisRunSummary[]
-  summary: AnalysisCompletionSummary
-  detail?: string
 }
 
 type TagDefinitionPayload = {
@@ -75,19 +66,6 @@ export const fetchPortfolioTagOverview = async () => {
   )
   return data.data
 }
-
-export const fetchAnalysisRuns = async (groupName?: string) => {
-  const params = groupName ? `?group_name=${encodeURIComponent(groupName)}` : ''
-  const data = await requestJson<ApiDataResponse<AnalysisRunSummary[]>>(
-    `/api/portfolio/analysis/runs${params}`,
-    '获取分析汇总失败',
-  )
-
-  return data.data
-}
-
-export const fetchAnalysisRunDetail = async (runId: number) =>
-  requestJson<AnalysisRunDetail>(`/api/portfolio/analysis/runs/${runId}`, '获取分析详情失败')
 
 export const addPortfolioStocks = async (
   stocks: AddPortfolioStockPayload[],
@@ -226,10 +204,3 @@ export const deletePortfolioGroup = async (
     { method: 'DELETE' },
   )
 }
-
-export const runPortfolioAnalysis = async (groupName?: string) =>
-  requestJson<AnalyzePortfolioResponse>('/api/portfolio/analyze', '执行分析失败', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ group_name: groupName ?? null }),
-  })

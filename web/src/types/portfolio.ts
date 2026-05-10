@@ -110,62 +110,8 @@ export type AnalysisStockPreview = {
   reason?: string
 }
 
-export type AnalysisRunSummary = {
-  run_id: number
-  group_name: string
-  analyzed_at: string
-  total_count: number
-  matched_count: number
-  unmatched_count: number
-  error_count: number
-  matched_stocks?: AnalysisStockPreview[]
-  unmatched_stocks?: AnalysisStockPreview[]
-  error_stocks?: AnalysisStockPreview[]
-}
-
-export type AnalysisDetailItem = {
-  stock_code: string
-  stock_name: string
-  group_name: string
-  is_triggered: boolean
-  status: string
-  reason: string | null
-  date: string | null
-  close: number | null
-  vol_ratio: number | null
-  bias_str: string | null
-  slope_str: string | null
-  vol_status: string | null
-  trend_str: string | null
-}
-
-export type AnalysisRunDetail = {
-  summary: AnalysisRunSummary & {
-    matched_stock_codes: string[]
-    unmatched_stock_codes: string[]
-    error_stock_codes: string[]
-  }
-  matched: AnalysisDetailItem[]
-  unmatched: AnalysisDetailItem[]
-  errors: AnalysisDetailItem[]
-}
-
 export type StockOption = {
   value: string
   label: string
   searchText: string
-}
-
-export type AnalysisCompletionSummary = {
-  total_count: number
-  matched_count: number
-  unmatched_count: number
-  error_count: number
-}
-
-export type AnalysisResultNavigation = {
-  runId?: number
-  groupDraft?: string
-  groupFilter: string
-  nonce: number
 }

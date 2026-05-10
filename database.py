@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String, UniqueConstraint, create_engine, inspect
+from sqlalchemy import Boolean, Column, DateTime, Integer, String, UniqueConstraint, create_engine, inspect
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker
 import datetime
@@ -68,20 +68,6 @@ class PortfolioTagDefinition(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="标签创建时间")
 
 
-class StrategySignal(Base):
-    """策略信号表，记录策略触发后的观察、止盈和止损状态。"""
-
-    __tablename__ = "strategy_signals"
-
-    id = Column(Integer, primary_key=True, index=True, comment="策略信号自增主键")
-    stock_code = Column(String, index=True, comment="触发信号的证券代码")
-    trigger_date = Column(String, comment="策略触发日期，按行情数据日期字符串保存")
-    trigger_price = Column(Float, comment="策略触发时的参考价格")
-    status = Column(String, default="观察中", comment="信号状态，例如观察中、已止盈、已止损")
-    target_profit = Column(Float, comment="目标止盈价格或收益阈值")
-    target_loss = Column(Float, comment="目标止损价格或亏损阈值")
-
-
 class StrategyConfig(Base):
     """策略配置表，保存用户创建的买入、卖出和收敛等策略规则。"""
 
@@ -94,42 +80,6 @@ class StrategyConfig(Base):
     rule_json = Column(String, nullable=True, comment="新版策略规则 JSON，描述完整的触发条件和参数")
     action = Column(String, comment="策略触发后的操作建议或动作类型")
     created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="策略创建时间")
-
-
-class PortfolioAnalysisRun(Base):
-    """自选组合分析批次表，记录一次分组分析的汇总结果。"""
-
-    __tablename__ = "portfolio_analysis_runs"
-
-    id = Column(Integer, primary_key=True, index=True, comment="分析批次自增主键")
-    group_name = Column(String, index=True, comment="本次分析对应的自选分组名称")
-    analyzed_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="分析执行时间")
-    total_count = Column(Integer, default=0, comment="本次分析的证券总数")
-    matched_count = Column(Integer, default=0, comment="满足策略或筛选条件的证券数量")
-    unmatched_count = Column(Integer, default=0, comment="未满足策略或筛选条件的证券数量")
-    error_count = Column(Integer, default=0, comment="分析过程中读取或计算失败的证券数量")
-
-
-class PortfolioAnalysisDetail(Base):
-    """自选组合分析明细表，记录每只证券在某次分析中的计算结果。"""
-
-    __tablename__ = "portfolio_analysis_details"
-
-    id = Column(Integer, primary_key=True, index=True, comment="分析明细自增主键")
-    run_id = Column(Integer, index=True, comment="所属分析批次 ID，关联 portfolio_analysis_runs.id")
-    group_name = Column(String, index=True, comment="分析时所属的自选分组名称")
-    stock_code = Column(String, index=True, comment="被分析的证券代码")
-    stock_name = Column(String, comment="被分析的证券名称")
-    is_triggered = Column(Boolean, default=False, comment="是否触发策略或筛选条件")
-    status = Column(String, default="unmatched", comment="分析状态，matched 表示命中，unmatched 表示未命中，error 表示计算失败")
-    reason = Column(String, nullable=True, comment="命中、未命中或失败的原因说明")
-    date = Column(String, nullable=True, comment="用于本次分析的最新行情日期")
-    close = Column(Float, nullable=True, comment="用于本次分析的最新收盘价")
-    vol_ratio = Column(Float, nullable=True, comment="成交量比值，通常表示当前成交量相对近期均量的倍数")
-    bias_str = Column(String, nullable=True, comment="乖离率分析结果文本")
-    slope_str = Column(String, nullable=True, comment="均线斜率分析结果文本")
-    vol_status = Column(String, nullable=True, comment="成交量状态文本，例如放量、缩量或正常")
-    trend_str = Column(String, nullable=True, comment="趋势分析结果文本")
 
 
 def ensure_database_schema():

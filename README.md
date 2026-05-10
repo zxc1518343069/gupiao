@@ -14,7 +14,7 @@
 
 本项目不内置行情数据库。数据库和行情数据是两部分：
 
-- 本地数据库：默认使用 SQLite 文件 `data.db`。它主要保存自选股、分组、标签、策略配置和分析记录，不保存完整日线行情。该文件属于个人本地运行数据，已在 `.gitignore` 中忽略，不应提交到 GitHub。
+- 本地数据库：默认使用 SQLite 文件 `data.db`。它主要保存自选股、分组、标签和策略配置，不保存完整日线行情。该文件属于个人本地运行数据，已在 `.gitignore` 中忽略，不应提交到 GitHub。
 - 数据库结构：后端启动时会调用 `database.py` 中的 `ensure_database_ready()`，只创建缺失的表并执行轻量兼容更新，不会清空、重建或覆盖已有数据。新环境也可以手动运行 `python scripts/init_db.py` 提前创建数据库。
 - 股票行情：来自本机通达信安装目录下的 `vipdoc` 日线文件，例如 `sz/lday/sz000001.day`、`sh/lday/sh600000.day`。后端接口和分析服务会直接读取这些 `.day` 文件。
 - 股票名称和行业信息：读取通达信 `T0002/hq_cache` 下的 `szs.tnf`、`shs.tnf`、`bjs.tnf`、`tdxhy.cfg`、`tdxzs*.cfg`、`specgpext.txt` 等本地缓存文件。
@@ -86,7 +86,7 @@ uvicorn server:app
 - `database.py`：SQLite/SQLAlchemy 数据模型、数据库就绪检查和轻量 schema 兼容逻辑。
 - `scripts/init_db.py`：可选的本地数据库初始化/检查脚本，适合新环境首次运行前执行。
 - `config.py`：通达信行情目录、数据库地址等本地配置。
-- `api/`：后端接口分层，包含股票数据、自选股、策略、标签和分析接口。
+- `api/`：后端接口分层，包含股票数据、自选股、策略和标签接口。
 - `services/`：行情读取、指标计算、股票元数据解析等服务逻辑。
 - `web/`：React + TypeScript 前端应用。
 - `convert_tdx.py`：可选的命令行通达信 `.day` 转 CSV 工具。
