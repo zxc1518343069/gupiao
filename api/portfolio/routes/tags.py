@@ -22,6 +22,7 @@ router = APIRouter(tags=["portfolio"])
 
 @router.get("/tag-definitions")
 def get_tag_definitions(db: Session = Depends(get_db)):
+    """返回标签定义，并附带每个标签当前被多少只股票使用。"""
     definitions = load_tag_definitions(db)
     stocks = db.query(SelfSelectedStock).all()
     usage_counts, _ = collect_tag_usage(stocks)
@@ -36,11 +37,13 @@ def get_tag_definitions(db: Session = Depends(get_db)):
 
 @router.get("/tags/overview")
 def get_tag_overview(db: Session = Depends(get_db)):
+    """返回标签管理页概览，包括已定义标签、自定义标签和使用明细预览。"""
     definitions = load_tag_definitions(db)
     stocks = db.query(SelfSelectedStock).all()
     usage_counts, stock_previews = collect_tag_usage(stocks)
     definition_names = {definition.name for definition in definitions}
 
+    # custom_tags 来自股票 notes 中存在、但还没有正式定义颜色的标签。
     custom_tags = [
         {
             "name": tag_name,
@@ -68,6 +71,7 @@ def get_tag_overview(db: Session = Depends(get_db)):
 
 @router.post("/tag-definitions")
 def add_tag_definition(request: TagDefinitionRequest, db: Session = Depends(get_db)):
+    """创建标签定义；首次调用时会先确保默认标签存在。"""
     load_tag_definitions(db)
 
     name = normalize_tag_name(request.name)
@@ -97,6 +101,7 @@ def update_tag_definition(
     request: TagDefinitionRequest,
     db: Session = Depends(get_db),
 ):
+    """更新标签定义，并把股票备注中使用的旧标签名同步改成新名称。"""
     definition = db.query(PortfolioTagDefinition).filter(PortfolioTagDefinition.id == definition_id).first()
     if not definition:
         raise HTTPException(status_code=404, detail="Tag definition not found")
@@ -120,6 +125,7 @@ def update_tag_definition(
     previous_name = definition.name
     definition.name = name
     definition.color = color
+    # 标签归属目前存放在 SelfSelectedStock.notes 的 JSON 中，改名时需要逐只股票同步。
     rename_tag_across_portfolio(db, previous_name, name)
 
     db.commit()
@@ -134,6 +140,7 @@ def update_tag_definition(
 
 @router.delete("/tag-definitions/{definition_id}")
 def delete_tag_definition(definition_id: int, db: Session = Depends(get_db)):
+    """删除标签定义本身，不主动删除股票 notes 中的同名自定义标签。"""
     definition = db.query(PortfolioTagDefinition).filter(PortfolioTagDefinition.id == definition_id).first()
     if not definition:
         raise HTTPException(status_code=404, detail="Tag definition not found")

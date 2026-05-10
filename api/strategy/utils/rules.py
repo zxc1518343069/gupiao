@@ -19,6 +19,7 @@ def parse_strategy_rule(strategy: StrategyConfig, conditions: list[str]) -> dict
             rule = None
 
         if isinstance(rule, dict):
+            # 买入/卖出规则需要做枚举清洗；均线粘合和交易规则直接透传结构。
             if strategy.category == "买入":
                 normalized_buy_rule = normalize_buy_rule(rule)
                 if normalized_buy_rule:
@@ -30,6 +31,7 @@ def parse_strategy_rule(strategy: StrategyConfig, conditions: list[str]) -> dict
             else:
                 return rule
 
+    # 兼容早期只保存 conditions_json/action 的策略配置。
     if strategy.category == "买入":
         return infer_buy_rule(conditions, strategy.action)
 

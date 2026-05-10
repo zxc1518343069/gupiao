@@ -20,13 +20,24 @@ def serialize_portfolio_stock(
     stock: SelfSelectedStock,
     analysis_snapshot: dict | None = None,
     params: int = DEFAULT_GROUP_PARAMS,
+    portfolio_group_names: list[str] | None = None,
+    industry_group_names: list[str] | None = None,
 ) -> dict:
     """统一持仓返回结构，兼容前端现有字段命名。"""
     metadata = get_stock_profile(stock.stock_code)
     display_stock_name = get_stock_name(stock.stock_code, stock.stock_name)
     normalized_params = normalize_group_params(params)
-    portfolio_group_names = get_stock_group_names(db, stock.stock_code, PORTFOLIO_GROUP_PARAMS)
-    industry_group_names = get_stock_group_names(db, stock.stock_code, INDUSTRY_GROUP_PARAMS)
+    # 列表接口会批量预取分组名；单条新增/更新接口没传时再按股票单独查询。
+    portfolio_group_names = (
+        portfolio_group_names
+        if portfolio_group_names is not None
+        else get_stock_group_names(db, stock.stock_code, PORTFOLIO_GROUP_PARAMS)
+    )
+    industry_group_names = (
+        industry_group_names
+        if industry_group_names is not None
+        else get_stock_group_names(db, stock.stock_code, INDUSTRY_GROUP_PARAMS)
+    )
     display_group_names = (
         industry_group_names
         if normalized_params == INDUSTRY_GROUP_PARAMS

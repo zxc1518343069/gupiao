@@ -14,12 +14,14 @@ from ..constants import DEFAULT_TAG_DEFINITIONS
 
 
 def normalize_tag_name(tag: str | None) -> str:
+    """清洗标签名称，统一去掉首尾空白。"""
     if tag is None:
         return ""
     return str(tag).strip()
 
 
 def normalize_tag_color(color: str | None) -> str:
+    """校验标签颜色，当前只接受标准 6 位十六进制颜色。"""
     cleaned_color = str(color or "").strip()
     if not re.fullmatch(r"#[0-9a-fA-F]{6}", cleaned_color):
         raise HTTPException(status_code=400, detail="Invalid tag color")
@@ -60,6 +62,7 @@ def ensure_default_tag_definitions(db: Session) -> None:
 
 
 def get_tag_definitions(db: Session) -> list[PortfolioTagDefinition]:
+    """读取标签定义，并在首次使用时初始化默认标签。"""
     ensure_default_tag_definitions(db)
     return db.query(PortfolioTagDefinition).order_by(PortfolioTagDefinition.id.asc()).all()
 
@@ -68,6 +71,7 @@ def serialize_tag_definition(
     definition: PortfolioTagDefinition,
     usage_count: int = 0,
 ) -> dict:
+    """把标签定义模型转换为前端展示结构。"""
     return {
         "id": definition.id,
         "name": definition.name,
@@ -97,6 +101,7 @@ def parse_stock_notes(notes: str | None) -> dict:
 
 
 def get_stock_tags(notes: str | None) -> list[str]:
+    """从股票 notes JSON 中提取结构化标签列表。"""
     parsed_notes = parse_stock_notes(notes)
     raw_tags = parsed_notes.get("tags")
     if not isinstance(raw_tags, list):
@@ -106,6 +111,7 @@ def get_stock_tags(notes: str | None) -> list[str]:
 
 
 def serialize_stock_notes(notes: str | None, tags: list[str]) -> str | None:
+    """把原备注文本和标签列表重新序列化为 notes JSON。"""
     parsed_notes = parse_stock_notes(notes)
     payload: dict[str, object] = {}
     normalized_tags = normalize_tags(tags)
@@ -123,6 +129,7 @@ def serialize_stock_notes(notes: str | None, tags: list[str]) -> str | None:
 def collect_tag_usage(
     stocks: list[SelfSelectedStock],
 ) -> tuple[Counter[str], dict[str, list[dict[str, str]]]]:
+    """统计标签使用次数，并为每个标签保留最多 5 只股票作为预览。"""
     usage_counts: Counter[str] = Counter()
     stock_previews: dict[str, list[dict[str, str]]] = defaultdict(list)
 
@@ -147,6 +154,7 @@ def rename_tag_across_portfolio(
     old_name: str,
     new_name: str,
 ) -> None:
+    """标签定义改名后，同步所有股票 notes 中的同名标签。"""
     if old_name == new_name:
         return
 

@@ -28,6 +28,7 @@ def get_strategy_configs(db: Session = Depends(get_db)):
 @router.post("")
 def create_strategy_config(request: StrategyCreateRequest, db: Session = Depends(get_db)):
     """创建策略配置，并保留原始条件与结构化规则。"""
+    # conditions_json 保留前端展示文案；rule_json 保存结构化规则供后续计算使用。
     category, name, conditions, action = normalize_strategy_payload(request)
 
     strategy = StrategyConfig(
@@ -60,6 +61,7 @@ def update_strategy_config(
 
     category, name, conditions, action = normalize_strategy_payload(request)
 
+    # 更新时整体替换展示条件和结构化规则，避免前后端规则状态分叉。
     strategy.category = category
     strategy.name = name
     strategy.conditions_json = json.dumps(conditions, ensure_ascii=False)

@@ -28,6 +28,7 @@ from .parsers import (
 
 def infer_buy_rule(conditions: list[str], action: str) -> dict[str, Any] | None:
     """从旧版条件文案推断买入规则结构。"""
+    # 旧数据只保存中文展示文案，这里把各段文案映射回前端使用的枚举值。
     volume = parse_labeled_values(conditions, "量（或）", VOLUME_LABELS)
     price_pattern = parse_labeled_values(conditions, "形态", PRICE_PATTERN_LABELS)
     moving_averages = parse_labeled_values(conditions, "均线（或）", MOVING_AVERAGE_LABELS)
@@ -62,6 +63,7 @@ def infer_buy_rule(conditions: list[str], action: str) -> dict[str, Any] | None:
 
 def infer_sell_rule(conditions: list[str], action: str) -> dict[str, Any] | None:
     """从旧版条件文案推断卖出规则结构。"""
+    # 卖出规则旧文案中没有完整 JSON 时，使用默认跌破阈值补齐结构。
     volume = parse_labeled_values(conditions, "量（或）", VOLUME_LABELS)
     breakdown_periods = parse_labeled_values(conditions, "跌破（或）", SELL_BREAKDOWN_LABELS)
     actions = parse_action_values(action, SELL_ACTION_LABELS)
@@ -91,6 +93,7 @@ def infer_convergence_rule(conditions: list[str]) -> dict[str, Any] | None:
     max_spread_ratio: float | None = None
     near_price_ratio: float | None = None
 
+    # 均线粘合旧文案不是固定枚举格式，直接从文本中提取 MA 周期和百分比。
     for condition in conditions:
         if condition.startswith("参与均线"):
             matched_periods = re.findall(r"MA\d+", condition.upper())

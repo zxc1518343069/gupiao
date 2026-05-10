@@ -20,6 +20,7 @@ def serialize_strategy(strategy: StrategyConfig) -> dict:
 
     normalized_conditions = [str(condition) for condition in conditions]
 
+    # 返回时同时提供展示条件和结构化 rule，让旧数据和新策略表单都能正常工作。
     return {
         "id": str(strategy.id),
         "category": strategy.category,

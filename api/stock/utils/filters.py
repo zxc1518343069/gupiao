@@ -5,6 +5,7 @@ from services.stock_metadata import is_etf_code
 
 def is_valid_stock_code(code: str) -> bool:
     """按市场前缀过滤 A 股股票代码。"""
+    # 只保留当前业务关心的 A 股代码段，排除指数、基金、债券等其他行情文件。
     if code.startswith("sz"):
         num = code[2:]
         if not (num.startswith("00") or num.startswith("30")):

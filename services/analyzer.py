@@ -1,5 +1,6 @@
 import os
 import struct
+from dataclasses import dataclass
 from datetime import date, datetime
 import pandas as pd
 from config import TDX_VIPDOC_PATH
@@ -13,22 +14,31 @@ MA_CONFIGS = (
     {"key": "MA120", "window": 120, "slope_shift": 20, "bias_key": "Bias120"},
 )
 
-def read_tdx_to_dataframe(stock_code: str) -> pd.DataFrame:
-    """
-    读取通达信 .day 文件并转换为 pandas DataFrame
-    """
+@dataclass(slots=True)
+class StockAnalysisBundle:
+    dataframe: pd.DataFrame
+    snapshot: dict
+    error: str | None = None
+
+
+# 进程级行情指标缓存：通达信数据按工作日更新，运行期间不做热更新检查。
+# 如果本地 .day 文件更新，重启后端即可清空并重建这份缓存。
+STOCK_ANALYSIS_CACHE: dict[str, StockAnalysisBundle] = {}
+
+
+def _build_tdx_day_file_path(stock_code: str) -> str:
     market = stock_code[:2].lower()
     code = stock_code[2:]
-    file_path = os.path.join(TDX_VIPDOC_PATH, market, "lday", f"{market}{code}.day")
+    return os.path.join(TDX_VIPDOC_PATH, market, "lday", f"{market}{code}.day")
+
+
+def _read_tdx_dataframe_from_path(file_path: str, stock_code: str) -> pd.DataFrame:
     price_scale_divisor = get_price_scale_divisor(stock_code)
-    
-    if not os.path.exists(file_path):
-        return pd.DataFrame()
-        
+
     data = []
     record_format = 'iiiiifii'
     record_size = struct.calcsize(record_format)
-    
+
     try:
         with open(file_path, 'rb') as f:
             while True:
@@ -48,9 +58,52 @@ def read_tdx_to_dataframe(stock_code: str) -> pd.DataFrame:
     except Exception as e:
         print(f"Error reading {file_path}: {e}")
         return pd.DataFrame()
-        
+
     df = pd.DataFrame(data)
     return df
+
+
+def read_tdx_to_dataframe(stock_code: str) -> pd.DataFrame:
+    """
+    读取通达信 .day 文件并转换为 pandas DataFrame
+    """
+    file_path = _build_tdx_day_file_path(stock_code)
+    if not os.path.exists(file_path):
+        return pd.DataFrame()
+
+    return _read_tdx_dataframe_from_path(file_path, stock_code)
+
+
+def _load_stock_analysis_bundle(stock_code: str) -> StockAnalysisBundle:
+    """读取单只股票日线并计算指标；只在缓存未命中时调用。"""
+    file_path = _build_tdx_day_file_path(stock_code)
+    if not os.path.exists(file_path):
+        return StockAnalysisBundle(pd.DataFrame(), {}, "行情数据文件不存在或无可用数据")
+
+    df = _read_tdx_dataframe_from_path(file_path, stock_code)
+    if df.empty:
+        return StockAnalysisBundle(df, {}, "行情数据文件不存在或无可用数据")
+
+    df = calculate_indicators(df)
+    return StockAnalysisBundle(df, build_stock_analysis_snapshot(df, stock_code))
+
+
+def _get_cached_stock_analysis_bundle(stock_code: str) -> StockAnalysisBundle:
+    cached_bundle = STOCK_ANALYSIS_CACHE.get(stock_code)
+    if cached_bundle is not None:
+        return cached_bundle
+
+    bundle = _load_stock_analysis_bundle(stock_code)
+    STOCK_ANALYSIS_CACHE[stock_code] = bundle
+    return bundle
+
+
+def get_stock_analysis_bundles(stock_codes: list[str]) -> dict[str, StockAnalysisBundle]:
+    """批量确保股票行情对象已进入内存缓存，并按代码返回缓存对象。"""
+    bundles: dict[str, StockAnalysisBundle] = {}
+    for stock_code in dict.fromkeys(stock_codes):
+        bundles[stock_code] = _get_cached_stock_analysis_bundle(stock_code)
+    return bundles
 
 def calculate_indicators(df: pd.DataFrame) -> pd.DataFrame:
     """
@@ -259,22 +312,34 @@ def build_stock_analysis_snapshot(df: pd.DataFrame, stock_code: str) -> dict:
 
 
 def get_stock_analysis_snapshot(stock_code: str) -> dict:
-    df = read_tdx_to_dataframe(stock_code)
-    if df.empty:
+    bundle = _get_cached_stock_analysis_bundle(stock_code)
+    if bundle is None:
         return {"error": "行情数据文件不存在或无可用数据"}
+    if bundle.error is not None:
+        return {"error": bundle.error}
 
-    df = calculate_indicators(df)
-    return build_stock_analysis_snapshot(df, stock_code)
+    return dict(bundle.snapshot)
 
 
 def get_stock_portfolio_snapshot(stock_code: str, added_at) -> dict:
-    df = read_tdx_to_dataframe(stock_code)
-    if df.empty:
-        return {"error": "行情数据文件不存在或无可用数据"}
+    bundle = _get_cached_stock_analysis_bundle(stock_code)
+    return build_stock_portfolio_snapshot_from_bundle(stock_code, added_at, bundle)
 
-    df = calculate_indicators(df)
+
+def build_stock_portfolio_snapshot_from_bundle(
+    stock_code: str,
+    added_at,
+    bundle: StockAnalysisBundle | None,
+) -> dict:
+    """基于已缓存的行情对象构造持仓快照，避免调用方再次读取 .day 文件。"""
+    if bundle is None:
+        return {"error": "行情数据文件不存在或无可用数据"}
+    if bundle.error is not None:
+        return {"error": bundle.error}
+
+    df = bundle.dataframe
     price_precision = get_price_precision(stock_code)
-    snapshot = build_stock_analysis_snapshot(df, stock_code)
+    snapshot = dict(bundle.snapshot)
     added_price, added_price_date = get_close_on_or_before_date(df, added_at, price_precision)
     latest_price = snapshot.get("close")
 

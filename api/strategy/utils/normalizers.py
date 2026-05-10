@@ -30,6 +30,7 @@ def coerce_number(value: Any, default: float) -> float:
 
 def normalize_buy_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
     """清洗买入结构化规则，缺少核心字段时视为不可用。"""
+    # 只保留当前系统认识的枚举值，防止旧客户端或手工数据写入脏值。
     volume = [value for value in rule.get("volume", []) if value in VALID_VOLUME_VALUES]
     price_pattern = rule.get("pricePattern")
     moving_averages = [
@@ -47,6 +48,7 @@ def normalize_buy_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
 
     return {
         "kind": "buy",
+        # dict.fromkeys 用来去重并保持用户原始选择顺序。
         "volume": list(dict.fromkeys(volume)),
         "pricePattern": price_pattern,
         "movingAverages": list(dict.fromkeys(moving_averages)),
@@ -72,6 +74,7 @@ def normalize_buy_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
 
 def normalize_sell_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
     """清洗卖出结构化规则，保留合法量能、跌破周期和动作。"""
+    # 卖出规则没有价格形态字段，核心校验集中在量能、跌破周期和动作。
     volume = [value for value in rule.get("volume", []) if value in VALID_VOLUME_VALUES]
     breakdown_periods = [
         value for value in rule.get("breakdownPeriods", []) if value in VALID_SELL_BREAKDOWN_VALUES
@@ -83,6 +86,7 @@ def normalize_sell_rule(rule: dict[str, Any]) -> dict[str, Any] | None:
 
     return {
         "kind": "sell",
+        # 和买入规则一样，去重时保留原始选择顺序。
         "volume": list(dict.fromkeys(volume)),
         "breakdownPeriods": list(dict.fromkeys(breakdown_periods)),
         "breakdownMinBias": coerce_number(

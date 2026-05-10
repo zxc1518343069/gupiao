@@ -49,6 +49,7 @@ def parse_labeled_values(
     if separator_index < 0:
         return []
 
+    # 旧条件用中文顿号分隔，例如“量（或）：爆量、放量”。
     content = matched_condition[separator_index + 1 :].strip()
     labels = [item.strip() for item in content.split("、")]
     values = [mapping[label] for label in labels if label in mapping]

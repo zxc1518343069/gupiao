@@ -25,6 +25,7 @@ def build_security_summary(code: str, raw_name: str) -> dict:
 def build_stock_list() -> list[dict]:
     """扫描本地可用代码并返回有效股票列表。"""
     valid_stocks = []
+    # 可用代码来自 vipdoc 下实际存在的 .day 文件，避免返回没有行情数据的标的。
     for code in list_available_stock_codes():
         raw_name = get_stock_raw_name(code)
         if is_valid_stock(code, raw_name):
@@ -35,6 +36,7 @@ def build_stock_list() -> list[dict]:
 def build_etf_list() -> list[dict]:
     """扫描本地可用代码并返回有效 ETF 列表。"""
     valid_etfs = []
+    # ETF 和股票共用本地行情文件列表，再按 ETF 代码段和名称二次过滤。
     for code in list_available_stock_codes():
         raw_name = get_stock_raw_name(code)
         if is_valid_etf(code, raw_name):

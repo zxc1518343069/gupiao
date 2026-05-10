@@ -8,6 +8,7 @@ from .parsers import normalize_action_display
 
 def normalize_strategy_payload(request: StrategyCreateRequest) -> tuple[str, str, list[str], str]:
     """清洗策略基础字段，并集中处理空值校验。"""
+    # 这里统一裁剪字符串，保证 routes 只处理已经标准化后的 payload。
     category = request.category.strip()
     name = request.name.strip()
     action = normalize_action_display(request.action.strip())

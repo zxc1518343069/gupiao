@@ -21,6 +21,7 @@ from ..constants import (
 
 
 def normalize_group_params(params: int | None) -> int:
+    """校验并归一化分组类型，1 表示自选分组，2 表示行业分组。"""
     try:
         normalized_params = DEFAULT_GROUP_PARAMS if params is None else int(params)
     except (TypeError, ValueError) as exc:
@@ -32,6 +33,7 @@ def normalize_group_params(params: int | None) -> int:
 
 
 def normalize_membership_scope(scope: str | None) -> str:
+    """校验股票入池范围，决定写入自选、组合分组还是行业分组。"""
     normalized_scope = str(scope or MEMBERSHIP_SCOPE_SELF_SELECTED).strip()
     if normalized_scope not in VALID_MEMBERSHIP_SCOPES:
         raise HTTPException(status_code=400, detail="Invalid membership scope")
@@ -39,6 +41,7 @@ def normalize_membership_scope(scope: str | None) -> str:
 
 
 def normalize_asset_type(asset_type: str | None = None) -> str:
+    """校验列表筛选的资产类型参数。"""
     normalized_asset_type = str(asset_type or ASSET_TYPE_STOCK).strip().lower()
     if normalized_asset_type not in VALID_ASSET_TYPES:
         raise HTTPException(status_code=400, detail="Invalid asset type")
@@ -46,10 +49,12 @@ def normalize_asset_type(asset_type: str | None = None) -> str:
 
 
 def sort_group_names(group_names: list[str]) -> list[str]:
+    """统一分组名展示顺序，默认分组始终排在最前。"""
     return sorted(group_names, key=lambda name: (name != DEFAULT_GROUP_NAME, name))
 
 
 def get_stock_group_names(db: Session, stock_code: str, params: int) -> list[str]:
+    """查询单只股票在指定分组类型下所属的全部分组名。"""
     normalized_params = normalize_group_params(params)
     group_names = [
         row[0]
@@ -63,7 +68,37 @@ def get_stock_group_names(db: Session, stock_code: str, params: int) -> list[str
     return sort_group_names(group_names)
 
 
+def get_stock_group_names_by_codes(
+    db: Session,
+    stock_codes: list[str],
+    params: int,
+) -> dict[str, list[str]]:
+    """批量读取股票分组名，避免列表接口对每只股票重复查询 membership。"""
+    normalized_params = normalize_group_params(params)
+    if not stock_codes:
+        return {}
+
+    group_names_by_code: dict[str, list[str]] = {stock_code: [] for stock_code in stock_codes}
+    rows = (
+        db.query(StockGroupMembership.stock_code, StockGroupMembership.group_name)
+        .filter(
+            StockGroupMembership.stock_code.in_(stock_codes),
+            StockGroupMembership.params == normalized_params,
+        )
+        .all()
+    )
+
+    for stock_code, group_name in rows:
+        group_names_by_code.setdefault(stock_code, []).append(group_name)
+
+    return {
+        stock_code: sort_group_names(group_names)
+        for stock_code, group_names in group_names_by_code.items()
+    }
+
+
 def upsert_group_membership(db: Session, stock_code: str, group_name: str, params: int) -> bool:
+    """确保股票属于某个分组，已存在返回 False，新建返回 True。"""
     membership = (
         db.query(StockGroupMembership)
         .filter(
@@ -88,6 +123,7 @@ def upsert_group_membership(db: Session, stock_code: str, group_name: str, param
 
 
 def delete_group_membership(db: Session, stock_code: str, group_name: str, params: int) -> bool:
+    """删除单条股票-分组关系，返回是否真的删除了记录。"""
     membership = (
         db.query(StockGroupMembership)
         .filter(
@@ -106,6 +142,7 @@ def delete_group_membership(db: Session, stock_code: str, group_name: str, param
 
 
 def has_group_membership(db: Session, stock_code: str, group_name: str, params: int) -> bool:
+    """判断股票是否已经属于指定分组。"""
     return (
         db.query(StockGroupMembership)
         .filter(
@@ -119,6 +156,7 @@ def has_group_membership(db: Session, stock_code: str, group_name: str, params: 
 
 
 def count_industry_group_etf_memberships(db: Session, group_name: str) -> int:
+    """统计某个行业分组下已经关联的 ETF 数量。"""
     stock_codes = [
         row[0]
         for row in db.query(StockGroupMembership.stock_code)
@@ -147,6 +185,7 @@ def ensure_industry_group_etf_capacity(
     group_name: str,
     asset_type: str,
 ) -> None:
+    """限制每个行业分组中 ETF 数量，避免行业概览被 ETF 过度占满。"""
     if asset_type != ASSET_TYPE_ETF:
         return
     if has_group_membership(db, stock_code, group_name, INDUSTRY_GROUP_PARAMS):
@@ -159,14 +198,17 @@ def ensure_industry_group_etf_capacity(
 
 
 def has_portfolio_group_membership(db: Session, stock: SelfSelectedStock) -> bool:
+    """判断股票是否属于任一自选分组。"""
     return bool(get_stock_group_names(db, stock.stock_code, PORTFOLIO_GROUP_PARAMS))
 
 
 def has_industry_group_membership(db: Session, stock: SelfSelectedStock) -> bool:
+    """判断股票是否属于任一行业分组。"""
     return bool(get_stock_group_names(db, stock.stock_code, INDUSTRY_GROUP_PARAMS))
 
 
 def has_any_membership(db: Session, stock: SelfSelectedStock) -> bool:
+    """判断股票是否仍有任何保留理由，用于移除后的孤儿清理。"""
     return bool(
         stock.is_self_selected
         or has_portfolio_group_membership(db, stock)
@@ -188,12 +230,14 @@ def sync_stock_membership_fields(db: Session, stock: SelfSelectedStock) -> None:
 
 
 def cleanup_stock_if_orphaned(db: Session, stock: SelfSelectedStock) -> None:
+    """同步冗余字段后，删除已经不在任何自选/分组范围内的股票记录。"""
     sync_stock_membership_fields(db, stock)
     if not has_any_membership(db, stock):
         db.delete(stock)
 
 
 def ensure_group_exists(db: Session, group_name: str, params: int = DEFAULT_GROUP_PARAMS) -> None:
+    """确保目标分组存在；不存在时自动创建，跨类别重名则拒绝。"""
     if group_name == DEFAULT_GROUP_NAME:
         return
 
