@@ -8,7 +8,7 @@
 - 读取通达信 `.day` 日线数据，计算 MA5、MA10、MA20、MA60、MA120。
 - 计算均线斜率、乖离率、前 5 日均量量比、持仓区间收益等指标。
 - 根据放量、均线趋势、收敛等条件生成观察信号和操作建议。
-- 支持 FastAPI 接口和 React 管理界面，也保留 `main.py` 批量扫描脚本。
+- 支持 FastAPI 接口和 React 管理界面。
 
 ## 数据来源与配置
 
@@ -22,8 +22,8 @@
 
 ```powershell
 # 当前 PowerShell 窗口内设置，按自己的通达信安装路径调整
-$env:TDX_VIPDOC_PATH = "D:\tdx\vipdoc"
-$env:TDX_HQ_CACHE_PATH = "D:\tdx\T0002\hq_cache"
+$env:TDX_VIPDOC_PATH = "E:\new_tdx\vipdoc"
+$env:TDX_HQ_CACHE_PATH = "E:\new_tdx\T0002\hq_cache"
 
 # 可选：修改数据库位置，默认是 sqlite:///./data.db
 $env:DATABASE_URL = "sqlite:///./data.db"
@@ -63,16 +63,6 @@ uvicorn server:app
 
 构建后 `server.py` 会在存在 `web/dist` 时托管前端静态资源。
 
-## 批量扫描脚本
-
-除 Web 应用外，项目保留命令行批量扫描能力：
-
-```powershell
-python main.py
-```
-
-`main.py` 会读取 `data/` 下的 `.day` 文件，转换到 `csvData/`，并把扫描结果输出到 `results/`。这些目录是本地生成数据，默认不会提交。
-
 ## 目录结构
 
 - `server.py`：FastAPI 应用入口，注册接口路由并托管前端构建产物。
@@ -81,7 +71,7 @@ python main.py
 - `api/`：后端接口分层，包含股票数据、自选股、策略、标签和分析接口。
 - `services/`：行情读取、指标计算、股票元数据解析等服务逻辑。
 - `web/`：React + TypeScript 前端应用。
-- `main.py`、`convert_tdx.py`：可选的命令行批量转换与扫描脚本。
+- `convert_tdx.py`：可选的命令行通达信 `.day` 转 CSV 工具。
 
 ## 发布前说明
 
