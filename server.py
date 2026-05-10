@@ -3,14 +3,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import os
-from database import Base, engine, ensure_database_schema
+from database import ensure_database_ready
 
 # 导入分层的路由
 from api import stock, indicator, strategy, portfolio
 
-# Create database tables
-Base.metadata.create_all(bind=engine)
-ensure_database_schema()
+# Ensure the local database exists without resetting user data.
+ensure_database_ready()
 
 app = FastAPI()
 

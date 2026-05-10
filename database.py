@@ -15,107 +15,121 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-# 自选股分组模型
 class StockGroup(Base):
+    """自选股分组表，保存用户自定义分组和分组类型。"""
+
     __tablename__ = "stock_groups"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    params = Column(Integer, default=1, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    id = Column(Integer, primary_key=True, index=True, comment="分组自增主键")
+    name = Column(String, unique=True, index=True, comment="分组名称，同一数据库中保持唯一")
+    params = Column(Integer, default=1, nullable=False, index=True, comment="分组类型标识，1 表示自选分组，2 表示行业分组")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, comment="分组创建时间")
 
-# 自选股模型
+
 class SelfSelectedStock(Base):
+    """自选股基础表，保存用户关注的股票、ETF 和相关备注。"""
+
     __tablename__ = "self_selected_stocks"
 
-    id = Column(Integer, primary_key=True, index=True)
-    stock_code = Column(String, unique=True, index=True)
-    stock_name = Column(String)
-    asset_type = Column(String, default="stock", nullable=False, index=True)
-    group_name = Column(String, default="全部自选") # 新增分组字段
-    is_self_selected = Column(Boolean, default=True, nullable=False, index=True)
-    industry_group_name = Column(String, nullable=True, index=True)
-    added_at = Column(DateTime, default=datetime.datetime.utcnow)
-    notes = Column(String, nullable=True)
+    id = Column(Integer, primary_key=True, index=True, comment="自选记录自增主键")
+    stock_code = Column(String, unique=True, index=True, comment="证券代码，包含市场前缀，例如 sh600000、sz000001")
+    stock_name = Column(String, comment="证券名称，来自通达信本地缓存或用户输入")
+    asset_type = Column(String, default="stock", nullable=False, index=True, comment="资产类型，stock 表示股票，etf 表示 ETF")
+    group_name = Column(String, default="全部自选", comment="主自选分组名称，默认归入全部自选")
+    is_self_selected = Column(Boolean, default=True, nullable=False, index=True, comment="是否仍在自选列表中，False 表示已移出但可保留历史信息")
+    industry_group_name = Column(String, nullable=True, index=True, comment="行业分组名称，用于行业或题材维度聚合")
+    added_at = Column(DateTime, default=datetime.datetime.utcnow, comment="加入自选列表的时间")
+    notes = Column(String, nullable=True, comment="用户备注或跟踪说明")
 
 
 class StockGroupMembership(Base):
+    """股票与分组的多对多关系表，支持一只股票属于多个分组。"""
+
     __tablename__ = "stock_group_memberships"
     __table_args__ = (
         UniqueConstraint("stock_code", "group_name", "params", name="uq_stock_group_membership"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    stock_code = Column(String, nullable=False, index=True)
-    group_name = Column(String, nullable=False, index=True)
-    params = Column(Integer, nullable=False, index=True)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="分组关系自增主键")
+    stock_code = Column(String, nullable=False, index=True, comment="证券代码，关联 self_selected_stocks.stock_code")
+    group_name = Column(String, nullable=False, index=True, comment="分组名称，关联 stock_groups.name")
+    params = Column(Integer, nullable=False, index=True, comment="分组类型标识，和 stock_groups.params 含义一致")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="股票加入该分组的时间")
 
 
 class PortfolioTagDefinition(Base):
+    """持仓标签定义表，保存可复用的标签名称和展示颜色。"""
+
     __tablename__ = "portfolio_tag_definitions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    color = Column(String, nullable=False)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="标签定义自增主键")
+    name = Column(String, unique=True, index=True, comment="标签名称，同一数据库中保持唯一")
+    color = Column(String, nullable=False, comment="标签展示颜色，通常为十六进制颜色值")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="标签创建时间")
 
 
-# 策略信号模型
 class StrategySignal(Base):
+    """策略信号表，记录策略触发后的观察、止盈和止损状态。"""
+
     __tablename__ = "strategy_signals"
 
-    id = Column(Integer, primary_key=True, index=True)
-    stock_code = Column(String, index=True)
-    trigger_date = Column(String)
-    trigger_price = Column(Float)
-    status = Column(String, default="观察中") # 观察中, 已止盈, 已止损
-    target_profit = Column(Float)
-    target_loss = Column(Float)
+    id = Column(Integer, primary_key=True, index=True, comment="策略信号自增主键")
+    stock_code = Column(String, index=True, comment="触发信号的证券代码")
+    trigger_date = Column(String, comment="策略触发日期，按行情数据日期字符串保存")
+    trigger_price = Column(Float, comment="策略触发时的参考价格")
+    status = Column(String, default="观察中", comment="信号状态，例如观察中、已止盈、已止损")
+    target_profit = Column(Float, comment="目标止盈价格或收益阈值")
+    target_loss = Column(Float, comment="目标止损价格或亏损阈值")
 
 
 class StrategyConfig(Base):
+    """策略配置表，保存用户创建的买入、卖出和收敛等策略规则。"""
+
     __tablename__ = "strategy_configs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    category = Column(String, index=True)
-    name = Column(String)
-    conditions_json = Column(String)
-    rule_json = Column(String, nullable=True)
-    action = Column(String)
-    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
+    id = Column(Integer, primary_key=True, index=True, comment="策略配置自增主键")
+    category = Column(String, index=True, comment="策略分类，例如买入、卖出、收敛或交易策略")
+    name = Column(String, comment="策略名称，用于前端列表展示和用户识别")
+    conditions_json = Column(String, comment="旧版策略条件 JSON，保留用于兼容历史配置")
+    rule_json = Column(String, nullable=True, comment="新版策略规则 JSON，描述完整的触发条件和参数")
+    action = Column(String, comment="策略触发后的操作建议或动作类型")
+    created_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="策略创建时间")
 
 
 class PortfolioAnalysisRun(Base):
+    """自选组合分析批次表，记录一次分组分析的汇总结果。"""
+
     __tablename__ = "portfolio_analysis_runs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    group_name = Column(String, index=True)
-    analyzed_at = Column(DateTime, default=datetime.datetime.utcnow, index=True)
-    total_count = Column(Integer, default=0)
-    matched_count = Column(Integer, default=0)
-    unmatched_count = Column(Integer, default=0)
-    error_count = Column(Integer, default=0)
+    id = Column(Integer, primary_key=True, index=True, comment="分析批次自增主键")
+    group_name = Column(String, index=True, comment="本次分析对应的自选分组名称")
+    analyzed_at = Column(DateTime, default=datetime.datetime.utcnow, index=True, comment="分析执行时间")
+    total_count = Column(Integer, default=0, comment="本次分析的证券总数")
+    matched_count = Column(Integer, default=0, comment="满足策略或筛选条件的证券数量")
+    unmatched_count = Column(Integer, default=0, comment="未满足策略或筛选条件的证券数量")
+    error_count = Column(Integer, default=0, comment="分析过程中读取或计算失败的证券数量")
 
 
 class PortfolioAnalysisDetail(Base):
+    """自选组合分析明细表，记录每只证券在某次分析中的计算结果。"""
+
     __tablename__ = "portfolio_analysis_details"
 
-    id = Column(Integer, primary_key=True, index=True)
-    run_id = Column(Integer, index=True)
-    group_name = Column(String, index=True)
-    stock_code = Column(String, index=True)
-    stock_name = Column(String)
-    is_triggered = Column(Boolean, default=False)
-    status = Column(String, default="unmatched")  # matched, unmatched, error
-    reason = Column(String, nullable=True)
-    date = Column(String, nullable=True)
-    close = Column(Float, nullable=True)
-    vol_ratio = Column(Float, nullable=True)
-    bias_str = Column(String, nullable=True)
-    slope_str = Column(String, nullable=True)
-    vol_status = Column(String, nullable=True)
-    trend_str = Column(String, nullable=True)
+    id = Column(Integer, primary_key=True, index=True, comment="分析明细自增主键")
+    run_id = Column(Integer, index=True, comment="所属分析批次 ID，关联 portfolio_analysis_runs.id")
+    group_name = Column(String, index=True, comment="分析时所属的自选分组名称")
+    stock_code = Column(String, index=True, comment="被分析的证券代码")
+    stock_name = Column(String, comment="被分析的证券名称")
+    is_triggered = Column(Boolean, default=False, comment="是否触发策略或筛选条件")
+    status = Column(String, default="unmatched", comment="分析状态，matched 表示命中，unmatched 表示未命中，error 表示计算失败")
+    reason = Column(String, nullable=True, comment="命中、未命中或失败的原因说明")
+    date = Column(String, nullable=True, comment="用于本次分析的最新行情日期")
+    close = Column(Float, nullable=True, comment="用于本次分析的最新收盘价")
+    vol_ratio = Column(Float, nullable=True, comment="成交量比值，通常表示当前成交量相对近期均量的倍数")
+    bias_str = Column(String, nullable=True, comment="乖离率分析结果文本")
+    slope_str = Column(String, nullable=True, comment="均线斜率分析结果文本")
+    vol_status = Column(String, nullable=True, comment="成交量状态文本，例如放量、缩量或正常")
+    trend_str = Column(String, nullable=True, comment="趋势分析结果文本")
 
 
 def ensure_database_schema():
@@ -242,3 +256,9 @@ def ensure_database_schema():
                 WHERE industry_group_name IS NOT NULL AND industry_group_name != ''
                 """
             )
+
+
+def ensure_database_ready():
+    """Create missing tables and apply lightweight schema compatibility updates."""
+    Base.metadata.create_all(bind=engine)
+    ensure_database_schema()
