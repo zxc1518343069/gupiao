@@ -8,7 +8,6 @@ import {
   createDefaultConvergenceConfig,
   createEmptyTradeConfig,
   getTradeActionValuesForPattern,
-  getTradeMovingAverageValuesForPattern,
 } from '../configs/strategyOptions'
 import {
   parseConvergenceStrategyConfig,
@@ -44,13 +43,11 @@ const sanitizeTradeConfig = (
   current: TradeStrategyConfig,
   nextPricePattern: PricePattern | null,
 ): TradeStrategyConfig => {
-  const allowedMovingAverageValues = new Set(getTradeMovingAverageValuesForPattern(nextPricePattern))
   const allowedActionValues = new Set(getTradeActionValuesForPattern(nextPricePattern))
 
   return {
     ...current,
     pricePattern: nextPricePattern,
-    movingAverages: current.movingAverages.filter((value) => allowedMovingAverageValues.has(value)),
     actions: current.actions.filter((value) => allowedActionValues.has(value)),
   }
 }

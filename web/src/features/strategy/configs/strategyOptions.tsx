@@ -34,7 +34,6 @@ export const movingAverageOptions: StrategyOption<MovingAveragePeriod>[] = [
   { label: 'MA5', value: 'ma5' },
   { label: 'MA10', value: 'ma10' },
   { label: 'MA20', value: 'ma20' },
-  { label: 'MA30', value: 'ma30' },
   { label: 'MA60', value: 'ma60' },
   { label: 'MA120', value: 'ma120' },
 ]
@@ -104,15 +103,6 @@ export const defaultBreakdownMinBias = 0
 export const defaultBreakdownMaxBias = 5
 export const tradeBuyActions: TradeAction[] = ['open', 'add', 'aggressive_one']
 export const tradeSellActions: TradeAction[] = ['reduce', 'clear']
-export const tradeTrendMovingAverages: MovingAveragePeriod[] = ['ma20', 'ma30', 'ma60', 'ma120']
-export const tradeBreakdownMovingAverages: MovingAveragePeriod[] = [
-  'ma5',
-  'ma10',
-  'ma20',
-  'ma30',
-  'ma60',
-  'ma120',
-]
 
 export const tradeActionOptions: StrategyOption<TradeAction>[] = [
   ...buyActionOptions,
@@ -171,16 +161,6 @@ export const getOptionLabel = <T extends string>(options: StrategyOption<T>[], v
 }
 
 export const joinLabels = (labels: string[]) => (labels.length > 0 ? labels.join('、') : '未配置')
-
-export const getTradeMovingAverageValuesForPattern = (pattern: PricePattern | null) => {
-  if (pattern === 'breakdown') {
-    return [...tradeBreakdownMovingAverages]
-  }
-  if (pattern === 'breakout' || pattern === 'pullback') {
-    return [...tradeTrendMovingAverages]
-  }
-  return [...movingAverageOptions.map((option) => option.value)]
-}
 
 export const getTradeActionValuesForPattern = (pattern: PricePattern | null) => {
   if (pattern === 'breakdown') {

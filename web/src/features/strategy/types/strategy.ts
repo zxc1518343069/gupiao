@@ -16,7 +16,7 @@ export type StrategyDraft = Omit<StrategyItem, 'id' | 'created_at'>
 
 export type VolumeCondition = 'surge' | 'increase' | 'flat' | 'shrink'
 export type PricePattern = 'breakout' | 'pullback' | 'breakdown'
-export type MovingAveragePeriod = 'ma5' | 'ma10' | 'ma20' | 'ma30' | 'ma60' | 'ma120'
+export type MovingAveragePeriod = 'ma5' | 'ma10' | 'ma20' | 'ma60' | 'ma120'
 export type BuyAction = 'open' | 'add' | 'aggressive_one'
 export type SellBreakdownPeriod = 'ma5' | 'ma10'
 export type SellAction = 'reduce' | 'clear'

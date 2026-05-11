@@ -78,7 +78,6 @@ const movingAveragePeriodOrder: Record<MovingAveragePeriod, number> = {
   ma5: 5,
   ma10: 10,
   ma20: 20,
-  ma30: 30,
   ma60: 60,
   ma120: 120,
 }

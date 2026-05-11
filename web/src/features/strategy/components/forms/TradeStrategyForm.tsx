@@ -2,7 +2,6 @@ import { PlusOutlined } from '@ant-design/icons'
 import { Alert, Button, Checkbox, InputNumber, Radio, Space, Typography } from 'antd'
 import {
   getTradeActionValuesForPattern,
-  getTradeMovingAverageValuesForPattern,
   movingAverageOptions,
   pricePatternOptions,
   tradeActionOptions,
@@ -53,11 +52,7 @@ export const TradeStrategyForm = ({
   onConfigChange,
   onSubmit,
 }: TradeStrategyFormProps) => {
-  const allowedMovingAverageValues = new Set(getTradeMovingAverageValuesForPattern(config.pricePattern))
   const allowedActionValues = new Set(getTradeActionValuesForPattern(config.pricePattern))
-  const movingAverageChoices = movingAverageOptions.filter((option) =>
-    allowedMovingAverageValues.has(option.value),
-  )
   const actionChoices = tradeActionOptions.filter((option) => allowedActionValues.has(option.value))
 
   return (
@@ -84,9 +79,9 @@ export const TradeStrategyForm = ({
           />
         </StrategyConfigSection>
 
-        <StrategyConfigSection title="均线" hint="根据所选形态自动切换可选均线范围">
+        <StrategyConfigSection title="均线" hint="多选为“或”逻辑">
           <Checkbox.Group
-            options={movingAverageChoices}
+            options={movingAverageOptions}
             value={config.movingAverages}
             style={checkboxGroupStyle}
             onChange={(values) => onConfigChange('movingAverages', values as MovingAveragePeriod[])}
