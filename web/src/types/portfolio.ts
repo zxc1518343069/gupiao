@@ -53,11 +53,7 @@ export type PortfolioStockItem = {
   stock_code: string
   stock_name: string
   asset_type: Exclude<PortfolioAssetType, 'all'>
-  group_name: string
-  group_names?: string[] | null
-  portfolio_group_name?: string | null
   portfolio_group_names?: string[] | null
-  industry_group_name?: string | null
   industry_group_names?: string[] | null
   is_self_selected?: boolean
   notes: string | null

@@ -42,6 +42,7 @@ export const movingAverageOptions: StrategyOption<MovingAveragePeriod>[] = [
 export const buyActionOptions: StrategyOption<BuyAction>[] = [
   { label: '建仓', value: 'open' },
   { label: '加仓', value: 'add' },
+  { label: '激进1笔', value: 'aggressive_one' },
 ]
 
 export const sellBreakdownOptions: StrategyOption<SellBreakdownPeriod>[] = [
@@ -101,10 +102,17 @@ export const defaultPullbackMinBias = -1
 export const defaultPullbackMaxBias = 1
 export const defaultBreakdownMinBias = 0
 export const defaultBreakdownMaxBias = 5
-export const tradeBuyActions: TradeAction[] = ['open', 'add']
+export const tradeBuyActions: TradeAction[] = ['open', 'add', 'aggressive_one']
 export const tradeSellActions: TradeAction[] = ['reduce', 'clear']
 export const tradeTrendMovingAverages: MovingAveragePeriod[] = ['ma20', 'ma30', 'ma60', 'ma120']
-export const tradeBreakdownMovingAverages: MovingAveragePeriod[] = ['ma5', 'ma10']
+export const tradeBreakdownMovingAverages: MovingAveragePeriod[] = [
+  'ma5',
+  'ma10',
+  'ma20',
+  'ma30',
+  'ma60',
+  'ma120',
+]
 
 export const tradeActionOptions: StrategyOption<TradeAction>[] = [
   ...buyActionOptions,

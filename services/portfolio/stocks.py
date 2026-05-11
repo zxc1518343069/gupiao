@@ -115,10 +115,8 @@ def list_portfolio_stocks(
             db,
             stock,
             snapshots_by_code.get(stock.stock_code),
-            normalized_params,
             portfolio_group_names_by_code.get(stock.stock_code),
             industry_group_names_by_code.get(stock.stock_code),
         )
         for stock in stocks
     ]
-

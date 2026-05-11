@@ -35,9 +35,7 @@ class SelfSelectedStock(Base):
     stock_code = Column(String, unique=True, index=True, comment="证券代码，包含市场前缀，例如 sh600000、sz000001")
     stock_name = Column(String, comment="证券名称，来自通达信本地缓存或用户输入")
     asset_type = Column(String, default="stock", nullable=False, index=True, comment="资产类型，stock 表示股票，etf 表示 ETF")
-    group_name = Column(String, default="全部自选", comment="主自选分组名称，默认归入全部自选")
     is_self_selected = Column(Boolean, default=True, nullable=False, index=True, comment="是否仍在自选列表中，False 表示已移出但可保留历史信息")
-    industry_group_name = Column(String, nullable=True, index=True, comment="行业分组名称，用于行业或题材维度聚合")
     added_at = Column(DateTime, default=datetime.datetime.utcnow, comment="加入自选列表的时间")
     notes = Column(String, nullable=True, comment="用户备注或跟踪说明")
 
@@ -130,11 +128,6 @@ def ensure_database_schema():
                 "ALTER TABLE self_selected_stocks ADD COLUMN is_self_selected BOOLEAN NOT NULL DEFAULT 1"
             )
 
-        if "self_selected_stocks" in table_names and "industry_group_name" not in self_selected_stock_columns:
-            connection.exec_driver_sql(
-                "ALTER TABLE self_selected_stocks ADD COLUMN industry_group_name VARCHAR"
-            )
-
         if "self_selected_stocks" in table_names and "asset_type" not in self_selected_stock_columns:
             connection.exec_driver_sql(
                 "ALTER TABLE self_selected_stocks ADD COLUMN asset_type VARCHAR NOT NULL DEFAULT 'stock'"
@@ -155,10 +148,6 @@ def ensure_database_schema():
             connection.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_self_selected_stocks_is_self_selected "
                 "ON self_selected_stocks (is_self_selected)"
-            )
-            connection.exec_driver_sql(
-                "CREATE INDEX IF NOT EXISTS ix_self_selected_stocks_industry_group_name "
-                "ON self_selected_stocks (industry_group_name)"
             )
             connection.exec_driver_sql(
                 "CREATE INDEX IF NOT EXISTS ix_self_selected_stocks_asset_type "
@@ -189,7 +178,11 @@ def ensure_database_schema():
                 "ALTER TABLE strategy_configs ADD COLUMN rule_json VARCHAR"
             )
 
-        if "self_selected_stocks" in table_names and "stock_group_memberships" in table_names:
+        if (
+            "self_selected_stocks" in table_names
+            and "stock_group_memberships" in table_names
+            and "group_name" in self_selected_stock_columns
+        ):
             connection.exec_driver_sql(
                 """
                 INSERT OR IGNORE INTO stock_group_memberships (stock_code, group_name, params, created_at)
@@ -198,6 +191,12 @@ def ensure_database_schema():
                 WHERE group_name IS NOT NULL AND group_name != '全部自选'
                 """
             )
+
+        if (
+            "self_selected_stocks" in table_names
+            and "stock_group_memberships" in table_names
+            and "industry_group_name" in self_selected_stock_columns
+        ):
             connection.exec_driver_sql(
                 """
                 INSERT OR IGNORE INTO stock_group_memberships (stock_code, group_name, params, created_at)

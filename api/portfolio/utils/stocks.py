@@ -19,7 +19,6 @@ from .memberships import (
     ensure_industry_group_etf_capacity,
     normalize_group_params,
     normalize_membership_scope,
-    sync_stock_membership_fields,
     upsert_group_membership,
 )
 
@@ -109,7 +108,6 @@ def add_stock_record(
             )
 
         if changed:
-            sync_stock_membership_fields(db, existing)
             db.flush()
             return True, "Added successfully", existing
         return False, "Stock already in target scope", None
@@ -118,9 +116,7 @@ def add_stock_record(
         stock_code=stock_code,
         stock_name=resolved_stock_name,
         asset_type=inferred_asset_type,
-        group_name=DEFAULT_GROUP_NAME if normalized_scope == MEMBERSHIP_SCOPE_SELF_SELECTED else None,
         is_self_selected=normalized_scope == MEMBERSHIP_SCOPE_SELF_SELECTED,
-        industry_group_name=None,
         notes=notes,
     )
     db.add(stock)
@@ -140,5 +136,4 @@ def add_stock_record(
         )
         upsert_group_membership(db, stock.stock_code, normalized_group_name, INDUSTRY_GROUP_PARAMS)
 
-    sync_stock_membership_fields(db, stock)
     return True, "Added successfully", stock

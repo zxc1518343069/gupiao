@@ -16,7 +16,6 @@ from ..schemas import GroupAddRequest, GroupRenameRequest
 from ..utils.memberships import (
     cleanup_stock_if_orphaned,
     normalize_group_params,
-    sync_stock_membership_fields,
 )
 
 router = APIRouter(tags=["portfolio"])
@@ -73,7 +72,7 @@ def add_group(request: GroupAddRequest, db: Session = Depends(get_db)):
 
 @router.put("/groups/rename")
 def rename_group(request: GroupRenameRequest, db: Session = Depends(get_db)):
-    """重命名分组，同时同步该分组下所有 membership 的冗余显示字段。"""
+    """重命名分组，同时更新该分组下所有 membership 关系。"""
     old_name = request.old_name.strip()
     new_name = request.new_name.strip()
     normalized_params = normalize_group_params(request.params)
@@ -110,14 +109,8 @@ def rename_group(request: GroupRenameRequest, db: Session = Depends(get_db)):
         )
         .all()
     )
-    affected_stock_codes = {membership.stock_code for membership in memberships}
     for membership in memberships:
         membership.group_name = new_name
-
-    # SelfSelectedStock 仍保留 group_name / industry_group_name 兼容字段，
-    # 因此关系表变更后需要重新同步这两个冗余字段。
-    for stock in db.query(SelfSelectedStock).filter(SelfSelectedStock.stock_code.in_(affected_stock_codes)).all():
-        sync_stock_membership_fields(db, stock)
 
     db.commit()
     return {"message": "Group renamed successfully"}

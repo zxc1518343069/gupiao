@@ -168,13 +168,7 @@ export const buildIndustryDiagramTree = ({
 }
 
 const getIndustryGroupNames = (stock: PortfolioStockItem) =>
-  stock.group_names?.length
-    ? stock.group_names
-    : stock.industry_group_names?.length
-      ? stock.industry_group_names
-      : stock.industry_group_name
-        ? [stock.industry_group_name]
-        : []
+  stock.industry_group_names?.length ? stock.industry_group_names : []
 
 export const buildIndustryOverviewDiagramTree = ({
   groupNames,

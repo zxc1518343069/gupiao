@@ -92,7 +92,7 @@ export const getTradeValidationErrors = (config: TradeStrategyConfig) => {
   }
 
   if (config.pricePattern === 'breakdown') {
-    if (config.actions.some((action) => action === 'open' || action === 'add')) {
+    if (config.actions.some((action) => action !== 'reduce' && action !== 'clear')) {
       errors.push('跌破仅支持减仓或清仓')
     }
   }

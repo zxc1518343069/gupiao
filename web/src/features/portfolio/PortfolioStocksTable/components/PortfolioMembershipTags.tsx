@@ -4,14 +4,13 @@ const { Text } = Typography
 
 type PortfolioMembershipTagsProps = {
   names?: string[] | null
-  fallbackName?: string | null
   colorMode?: 'single' | 'stable'
   color?: string
   emptyText?: string | null
 }
 
-const normalizeMembershipNames = (names?: string[] | null, fallbackName?: string | null) => {
-  const rawNames = names?.length ? names : fallbackName ? [fallbackName] : []
+const normalizeMembershipNames = (names?: string[] | null) => {
+  const rawNames = names ?? []
   const seenNames = new Set<string>()
 
   return rawNames.reduce<string[]>((result, name) => {
@@ -42,12 +41,11 @@ const resolveStableTagColor = (name: string) => {
 
 export const PortfolioMembershipTags = ({
   names,
-  fallbackName,
   colorMode = 'single',
   color = 'blue',
   emptyText = null,
 }: PortfolioMembershipTagsProps) => {
-  const membershipNames = normalizeMembershipNames(names, fallbackName)
+  const membershipNames = normalizeMembershipNames(names)
 
   if (!membershipNames.length) {
     return emptyText ? (

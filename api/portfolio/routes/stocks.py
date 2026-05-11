@@ -72,7 +72,7 @@ def add_to_portfolio(request: StockAddRequest, db: Session = Depends(get_db)):
         raise HTTPException(status_code=400, detail=message)
 
     db.commit()
-    return {"message": message, "data": serialize_portfolio_stock(db, stock, params=request.params)}
+    return {"message": message, "data": serialize_portfolio_stock(db, stock)}
 
 
 @router.post("/add/batch")
@@ -112,7 +112,7 @@ def add_batch_to_portfolio(request: StockBatchAddRequest, db: Session = Depends(
         )
 
         if success and stock is not None:
-            added.append(serialize_portfolio_stock(db, stock, params=request.params))
+            added.append(serialize_portfolio_stock(db, stock))
         else:
             skipped.append(
                 {
@@ -187,5 +187,5 @@ def update_portfolio_stock_tags(
     snapshot = get_stock_portfolio_snapshot(stock.stock_code, stock.added_at)
     return {
         "message": "Tags updated successfully",
-        "data": serialize_portfolio_stock(db, stock, snapshot, params),
+        "data": serialize_portfolio_stock(db, stock, snapshot),
     }

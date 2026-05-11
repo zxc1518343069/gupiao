@@ -16,7 +16,6 @@ from services.portfolio.exceptions import PortfolioValidationError
 from services.portfolio.groups import (
     get_stock_group_names as _get_stock_group_names,
     get_stock_group_names_by_codes as _get_stock_group_names_by_codes,
-    sort_group_names,
 )
 from services.portfolio.normalizers import (
     normalize_asset_type as _normalize_asset_type,
@@ -188,22 +187,8 @@ def has_any_membership(db: Session, stock: SelfSelectedStock) -> bool:
     )
 
 
-def sync_stock_membership_fields(db: Session, stock: SelfSelectedStock) -> None:
-    """同步 SelfSelectedStock 上的冗余分组字段，兼容现有查询逻辑。"""
-    portfolio_group_names = get_stock_group_names(db, stock.stock_code, PORTFOLIO_GROUP_PARAMS)
-    industry_group_names = get_stock_group_names(db, stock.stock_code, INDUSTRY_GROUP_PARAMS)
-
-    stock.group_name = (
-        portfolio_group_names[0]
-        if portfolio_group_names
-        else (DEFAULT_GROUP_NAME if stock.is_self_selected else None)
-    )
-    stock.industry_group_name = industry_group_names[0] if industry_group_names else None
-
-
 def cleanup_stock_if_orphaned(db: Session, stock: SelfSelectedStock) -> None:
-    """同步冗余字段后，删除已经不在任何自选/分组范围内的股票记录。"""
-    sync_stock_membership_fields(db, stock)
+    """删除已经不在任何自选/分组范围内的股票记录。"""
     if not has_any_membership(db, stock):
         db.delete(stock)
 

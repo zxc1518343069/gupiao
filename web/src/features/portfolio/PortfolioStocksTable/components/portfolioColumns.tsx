@@ -7,11 +7,12 @@ import { VolumeMetricCell } from '../../../../components/PortfolioMetrics'
 import { PortfolioTagEditor } from '../../../../components/PortfolioTagEditor'
 import { formatDate } from '@/utils/formatters/dateFormat'
 import { formatInstrumentPrice } from '@/utils/formatters/priceFormat'
-import type { PortfolioStockItem, PortfolioTagDefinition } from '../../../../types/portfolio'
+import type { GroupParams, PortfolioStockItem, PortfolioTagDefinition } from '../../../../types/portfolio'
 import { PortfolioOperationSuggestionCell } from './PortfolioOperationSuggestionCell'
 import { PortfolioMembershipTags } from './PortfolioMembershipTags'
 import { PortfolioMovingAverageStatusCell } from './PortfolioMovingAverageStatusCell'
 import { PortfolioStockIdentityCell } from './PortfolioStockIdentityCell'
+import { defaultGroupName, industryGroupParams, portfolioGroupParams } from '../../constants'
 
 const { Text } = Typography
 
@@ -23,6 +24,7 @@ type PortfolioColumnsOptions = {
   latestPriceDateLabel?: string | null
   showGroupColumn?: boolean
   showPitchColumn?: boolean
+  groupParams?: GroupParams
   strategyRules?: StrategyRule[]
 }
 
@@ -32,7 +34,6 @@ type MembershipColumnConfig = {
   key: string
   width: number
   getNames: (record: PortfolioStockItem) => string[] | null | undefined
-  getFallbackName?: (record: PortfolioStockItem) => string | null | undefined
   emptyText?: string | null
 }
 
@@ -68,7 +69,6 @@ const createMembershipColumn = ({
   key,
   width,
   getNames,
-  getFallbackName,
   emptyText,
 }: MembershipColumnConfig): TableColumnsType<PortfolioStockItem>[number] => ({
   title,
@@ -78,7 +78,6 @@ const createMembershipColumn = ({
   render: (_: PortfolioStockItem[typeof dataIndex], record: PortfolioStockItem) => (
     <PortfolioMembershipTags
       names={getNames(record)}
-      fallbackName={getFallbackName?.(record) ?? null}
       colorMode="stable"
       emptyText={emptyText}
     />
@@ -93,24 +92,26 @@ export const createPortfolioColumns = ({
   latestPriceDateLabel,
   showGroupColumn = true,
   showPitchColumn = false,
+  groupParams = portfolioGroupParams,
   strategyRules = [],
 }: PortfolioColumnsOptions): TableColumnsType<PortfolioStockItem> => {
+  const isIndustryGroupView = groupParams === industryGroupParams
   const groupColumn = createMembershipColumn({
     title: '分组',
-    dataIndex: 'group_name',
-    key: 'group_name',
+    dataIndex: isIndustryGroupView ? 'industry_group_names' : 'portfolio_group_names',
+    key: isIndustryGroupView ? 'industry_group_names' : 'portfolio_group_names',
     width: 180,
-    getNames: (record) => record.group_names,
-    getFallbackName: (record) => record.group_name,
+    getNames: (record) =>
+      isIndustryGroupView ? record.industry_group_names : record.portfolio_group_names,
+    emptyText: isIndustryGroupView ? '--' : defaultGroupName,
   })
 
   const pitchColumn = createMembershipColumn({
     title: '吹票',
-    dataIndex: 'portfolio_group_name',
-    key: 'portfolio_group_name',
+    dataIndex: 'portfolio_group_names',
+    key: 'portfolio_group_names',
     width: 220,
     getNames: (record) => record.portfolio_group_names,
-    getFallbackName: (record) => record.portfolio_group_name,
     emptyText: '--',
   })
 

@@ -169,6 +169,7 @@ export const usePortfolioStocksTable = ({
         latestPriceDateLabel,
         showGroupColumn: !groupName,
         showPitchColumn: groupParams === industryGroupParams,
+        groupParams,
         strategyRules,
       }),
     [

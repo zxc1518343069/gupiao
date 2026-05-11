@@ -1,5 +1,5 @@
 import { Modal } from 'antd'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   buildConvergenceStrategyDraft,
   buildTradeStrategyDraft,
@@ -7,6 +7,8 @@ import {
 import {
   createDefaultConvergenceConfig,
   createEmptyTradeConfig,
+  getTradeActionValuesForPattern,
+  getTradeMovingAverageValuesForPattern,
 } from '../configs/strategyOptions'
 import {
   parseConvergenceStrategyConfig,
@@ -19,10 +21,6 @@ import type {
   TradeStrategyConfig,
   PricePattern,
 } from '../types/strategy'
-import {
-  getTradeActionValuesForPattern,
-  getTradeMovingAverageValuesForPattern,
-} from '../configs/strategyOptions'
 import { getTradeValidationErrors } from '../validators/strategyValidators'
 import { ConvergenceStrategyForm } from './forms/ConvergenceStrategyForm'
 import { TradeStrategyForm } from './forms/TradeStrategyForm'
@@ -35,48 +33,43 @@ type StrategyEditModalProps = {
   onUpdateStrategy: (strategyId: string, draft: StrategyDraft) => Promise<boolean>
 }
 
-export const StrategyEditModal = ({
-  open,
+type StrategyEditModalBodyProps = {
+  strategy: StrategyItem
+  updating: boolean
+  onCancel: () => void
+  onUpdateStrategy: (strategyId: string, draft: StrategyDraft) => Promise<boolean>
+}
+
+const sanitizeTradeConfig = (
+  current: TradeStrategyConfig,
+  nextPricePattern: PricePattern | null,
+): TradeStrategyConfig => {
+  const allowedMovingAverageValues = new Set(getTradeMovingAverageValuesForPattern(nextPricePattern))
+  const allowedActionValues = new Set(getTradeActionValuesForPattern(nextPricePattern))
+
+  return {
+    ...current,
+    pricePattern: nextPricePattern,
+    movingAverages: current.movingAverages.filter((value) => allowedMovingAverageValues.has(value)),
+    actions: current.actions.filter((value) => allowedActionValues.has(value)),
+  }
+}
+
+const StrategyEditModalBody = ({
   strategy,
   updating,
   onCancel,
   onUpdateStrategy,
-}: StrategyEditModalProps) => {
-  const [tradeConfig, setTradeConfig] = useState<TradeStrategyConfig>(() => createEmptyTradeConfig())
+}: StrategyEditModalBodyProps) => {
+  const [tradeConfig, setTradeConfig] = useState<TradeStrategyConfig>(() =>
+    strategy.category === '均线粘合' ? createEmptyTradeConfig() : parseTradeStrategyConfig(strategy),
+  )
   const [convergenceConfig, setConvergenceConfig] = useState<ConvergenceConfig>(() =>
-    createDefaultConvergenceConfig(),
+    strategy.category === '均线粘合'
+      ? parseConvergenceStrategyConfig(strategy)
+      : createDefaultConvergenceConfig(),
   )
   const [tradeValidationErrors, setTradeValidationErrors] = useState<string[]>([])
-
-  const sanitizeTradeConfig = (
-    current: TradeStrategyConfig,
-    nextPricePattern: PricePattern | null,
-  ): TradeStrategyConfig => {
-    const allowedMovingAverageValues = new Set(getTradeMovingAverageValuesForPattern(nextPricePattern))
-    const allowedActionValues = new Set(getTradeActionValuesForPattern(nextPricePattern))
-
-    return {
-      ...current,
-      pricePattern: nextPricePattern,
-      movingAverages: current.movingAverages.filter((value) => allowedMovingAverageValues.has(value)),
-      actions: current.actions.filter((value) => allowedActionValues.has(value)),
-    }
-  }
-
-  useEffect(() => {
-    if (!open || !strategy) {
-      return
-    }
-
-    setTradeValidationErrors([])
-
-    if (strategy.category === '均线粘合') {
-      setConvergenceConfig(parseConvergenceStrategyConfig(strategy))
-      return
-    }
-
-    setTradeConfig(parseTradeStrategyConfig(strategy))
-  }, [open, strategy])
 
   const updateTradeConfig = <Key extends keyof TradeStrategyConfig>(
     key: Key,
@@ -123,14 +116,8 @@ export const StrategyEditModal = ({
   }
 
   return (
-    <Modal
-      open={open}
-      title={strategy?.category === '均线粘合' ? '编辑均线粘合策略' : '编辑交易策略'}
-      width={880}
-      footer={null}
-      onCancel={onCancel}
-    >
-      {strategy && strategy.category !== '均线粘合' ? (
+    <>
+      {strategy.category !== '均线粘合' ? (
         <TradeStrategyForm
           config={tradeConfig}
           validationErrors={tradeValidationErrors}
@@ -143,7 +130,7 @@ export const StrategyEditModal = ({
         />
       ) : null}
 
-      {strategy?.category === '均线粘合' ? (
+      {strategy.category === '均线粘合' ? (
         <ConvergenceStrategyForm
           config={convergenceConfig}
           submitting={updating}
@@ -152,6 +139,34 @@ export const StrategyEditModal = ({
           onSubmit={() => {
             void handleConvergenceSubmit()
           }}
+        />
+      ) : null}
+    </>
+  )
+}
+
+export const StrategyEditModal = ({
+  open,
+  strategy,
+  updating,
+  onCancel,
+  onUpdateStrategy,
+}: StrategyEditModalProps) => {
+  return (
+    <Modal
+      open={open}
+      title={strategy?.category === '均线粘合' ? '编辑均线粘合策略' : '编辑交易策略'}
+      width={880}
+      footer={null}
+      onCancel={onCancel}
+    >
+      {strategy ? (
+        <StrategyEditModalBody
+          key={strategy.id}
+          strategy={strategy}
+          updating={updating}
+          onCancel={onCancel}
+          onUpdateStrategy={onUpdateStrategy}
         />
       ) : null}
     </Modal>
